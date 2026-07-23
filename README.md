@@ -25,8 +25,8 @@ npm run preview
 - 地图只关闭鼠标滚轮/触控板上下滚动缩放，仍支持双击、双指、框选和左上角 `+ / −` 控件。
 - 地图以蓝色大头针标记甜品饮品、橙色大头针标记正餐小吃，并提供文字图例；筛选或距离排序不会改变原图编号。
 - “使用我的位置”调用浏览器 Geolocation；拒绝权限后可一键使用永州市中心模拟位置。
-- 手机端点击/拖动底板把手可在收起、半屏、全屏之间切换；键盘上下箭头同样可操作。
-- 详情弹窗和 OpenStreetMap 路线导航均可直接使用。
+- 手机端点击/拖动底板把手可在收起、半屏、全屏之间切换；拖动由 `requestAnimationFrame` 直接更新合成层，45 条列表不会在移动过程中反复渲染，键盘上下箭头同样可操作。
+- 列表、地图弹窗和餐厅详情中的“路线导航”均打开同一地图选择器：iOS 可选高德地图或 Apple 地图，Android 可选高德地图或系统地图，桌面端提供高德地图网页版与 Apple 地图。
 
 ## 地图服务配置
 
@@ -40,6 +40,16 @@ npm run preview
 ```
 
 如果部署流量较大，请遵守 OpenStreetMap 的瓦片使用政策，并换成合规的商用瓦片提供商。只需替换 `url` 与 `attribution`；若服务需要令牌，建议通过 Vite 环境变量（如 `VITE_TILE_TOKEN`）注入，不要把密钥提交到仓库。
+
+## 路线导航
+
+导航链接集中在 `src/components/NavigationChooser.tsx` 生成。移动端的原生地图 URI 只会在用户明确选择地图应用时打开，不会自动跳转：
+
+- iOS：`iosamap://navi` 或 Apple Maps HTTPS。
+- Android：`androidamap://navi` 或 `geo:` 系统地图 URI。
+- 桌面端：高德地图 URI 网页版或 Apple Maps HTTPS。
+
+演示餐厅坐标按 WGS84 处理，高德链接设置 `dev=1`；实际路线和坐标偏移以地图应用为准。
 
 ## GitHub Pages 部署
 

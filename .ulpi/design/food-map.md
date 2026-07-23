@@ -27,7 +27,13 @@
 
 ### 详情与导航
 
-“查看详情”打开 Radix Dialog，包含大图、招牌菜、营业时间、地址。“路线导航”打开 OpenStreetMap Directions 查询 URL；这是有意义的外部动作，图标和文案同时出现。
+“查看详情”打开 Radix Dialog，包含大图、招牌菜、营业时间、地址。“路线导航”先打开轻量的地图选择器，不再进入 OpenStreetMap 网页：
+
+- iOS：高德地图使用 `iosamap://navi`；系统地图使用 Apple Maps URL，起点留空表示当前位置。
+- Android：高德地图使用 `androidamap://navi`；系统地图使用 `geo:` URI，由系统交给已安装的地图应用。
+- 桌面端：显示“高德地图网页版”和“Apple 地图”作为合理降级。
+- 高德参数使用 `sourceApplication=yongzhou_food`、终点名称与坐标；当前模拟坐标视为 WGS84，设置 `dev=1` 由高德处理偏移。
+- 列表、地图弹窗和详情弹窗的“路线导航”必须走同一个组件与 URL 生成器。
 
 ## 状态模型
 
@@ -85,6 +91,9 @@
 - 拖拽把手是 48×24 的按钮，可点击在三档间循环；上下箭头改变档位；aria-expanded 和当前档位文本。
 - drag end 按最近档位吸附；滚动列表位于 sheet 内，只有从顶部继续下拉才拖动面板。
 - safe-area-bottom 必须计入；面板 full 时顶部不覆盖搜索栏。
+- 性能硬约束：`pointermove` 期间禁止调用 React `setState`。使用 `requestAnimationFrame` 合并事件，并直接在面板 DOM 上写入 `--drag-y`；只有 pointerup/cancel 时才更新 `level`。销毁时取消未完成的 animation frame。
+- 拖动开始/结束用 `classList` 切换 `is-dragging`；面板使用 `translate3d`、`will-change: transform`、`backface-visibility: hidden` 与合适的 `contain`，确保合成层移动而不是让 45 条列表参与布局/绘制。
+- 拖动位移按屏幕和当前档位做边界限制，禁止把面板拉出顶部或底部；点击阈值 8px 保持不变。
 
 ## 数据接口
 
@@ -106,6 +115,7 @@ type Restaurant = {
 - 所有 icon-only 按钮有 aria-label；焦点始终可见；不使用 hover-only 信息。
 - `prefers-reduced-motion` 禁止 fly 动画与 sheet transform 动画。
 - React Leaflet 动态/直接加载均可；照片 lazy-load；45 个标记不聚类，但列表编号与地图点编号必须使用稳定 `sourceIndex`，不能因距离排序重新编号。
+- 地图选择器必须有 Dialog 标题与说明；关闭后焦点返回原“路线导航”按钮。原生 URI 只能由明确的用户点击触发，不能通过计时器自动跳转。
 
 ## GitHub Pages 部署
 
@@ -121,13 +131,13 @@ type Restaurant = {
 - Accessibility：对比度已记录；键盘路径、焦点、ARIA、reduced-motion、48px 触控与 safe area 均覆盖。
 - Layout：工具栏、媒体列表、地图浮层三种布局族；每个视图只有搜索或当前详情一个主操作。
 - Scored critique：distinctiveness 3; hierarchy 4; consistency 4; accessibility 4; state coverage 4; copy 3; restraint 4; motion 4。总分 30/32，无轴 ≤2。
-- Revise-and-justify：将两行顶栏改为单层搜索台，固定搜索键第 4 列以消除条件渲染错位；只禁用滚轮缩放，保留用户明确发起的双击/双指/框选缩放；餐碗改为双色分类大头针并增加文字图例；取消标记宽高/位移动画以避免 Leaflet zoom transform 叠加抖动；数据门槛修订为严格 45 点。
+- Revise-and-justify：将两行顶栏改为单层搜索台，固定搜索键第 4 列以消除条件渲染错位；只禁用滚轮缩放，保留用户明确发起的双击/双指/框选缩放；餐碗改为双色分类大头针并增加文字图例；移动面板由 React 高频状态更新改为 rAF 合成层位移，消除 45 项结果树反复渲染；导航从陌生网页改为用户主动选择高德或系统地图；数据门槛修订为严格 45 点。
 
 ## Build handoff
 
 - Target agent: `react-vite-tailwind-engineer`
 - Stack: React 18+, TypeScript, Vite, Tailwind CSS, React Leaflet/Leaflet, Radix Dialog/Popover, Lucide React。
 - Setup: 使用 Radix primitives 并以锁定 token 主题化；不要手工重实现其可访问组件。
-- Acceptance: 可直接 `npm install && npm run dev`；严格 45 个店铺点位；搜索键始终位于搜索框最右列；只有滚轮/触控板上下滚动不缩放地图，双击/双指/框选和 `+ / −` 均可缩放；大头针固定尺寸且缩放不抖动，甜品饮品为蓝色、正餐小吃为橙色并有文字图例；搜索/筛选/加载/空/错误可演示；列表地图双向选择；GitHub Pages Actions 配置完整；无 TypeScript/build 错误；README 含部署说明。
+- Acceptance: 可直接 `npm install && npm run dev`；严格 45 个店铺点位；搜索键始终位于搜索框最右列；只有滚轮/触控板上下滚动不缩放地图，双击/双指/框选和 `+ / −` 均可缩放；大头针固定尺寸且缩放不抖动，甜品饮品为蓝色、正餐小吃为橙色并有文字图例；移动面板拖动期间 React 状态更新为 0 次且使用 rAF；列表、地图弹窗和详情均能选择高德/系统地图；搜索/筛选/加载/空/错误可演示；GitHub Pages Actions 配置完整；无 TypeScript/build 错误；README 含部署说明。
 
 Implement exactly this spec. Theme the design system with our locked tokens; do NOT redesign or re-implement its components.

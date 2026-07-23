@@ -1,10 +1,10 @@
 import L from 'leaflet'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
-import { ExternalLink, Navigation, Star } from 'lucide-react'
+import { ExternalLink, Star } from 'lucide-react'
 import type { Coordinates, RestaurantCategory, RestaurantWithDistance } from '../types'
 import { formatDistance, statusText } from '../utils'
-import { directionsUrl } from './RestaurantList'
+import { NavigationChooser } from './NavigationChooser'
 
 type Props = {
   restaurants: RestaurantWithDistance[]
@@ -105,7 +105,7 @@ export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLoca
                   <span className={`status status--${restaurant.openStatus}`}>{statusText[restaurant.openStatus]} · {formatDistance(restaurant.distance)}</span>
                 </div>
               </div>
-              <div className="popup-actions"><button type="button" onClick={() => onDetails(restaurant.id)}>查看详情<ExternalLink size={14} /></button><a href={directionsUrl(restaurant)} target="_blank" rel="noreferrer"><Navigation size={14} />路线导航</a></div>
+              <div className="popup-actions"><button type="button" onClick={() => onDetails(restaurant.id)}>查看详情<ExternalLink size={14} /></button><NavigationChooser restaurant={restaurant} className="navigation-trigger" iconSize={14} /></div>
             </Popup>
           </Marker>
         })}

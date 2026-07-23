@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, MapPin, Navigation, Star } from 'lucide-react'
+import { Check, ChevronRight, MapPin, Star } from 'lucide-react'
 import type { RestaurantWithDistance } from '../types'
 import { formatDistance, statusText } from '../utils'
+import { NavigationChooser } from './NavigationChooser'
 
 type ItemProps = {
   restaurant: RestaurantWithDistance
   selected: boolean
   onSelect: () => void
   onDetails: () => void
-}
-
-export function directionsUrl(restaurant: RestaurantWithDistance) {
-  return `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=;${restaurant.lat}%2C${restaurant.lng}`
 }
 
 function RestaurantImage({ restaurant }: { restaurant: RestaurantWithDistance }) {
@@ -35,7 +32,7 @@ export function RestaurantListItem({ restaurant, selected, onSelect, onDetails }
       </button>
       <div className="item-actions">
         <button type="button" onClick={(event) => { event.stopPropagation(); onDetails() }}>查看详情</button>
-        <a href={directionsUrl(restaurant)} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><Navigation size={14} />路线导航</a>
+        <NavigationChooser restaurant={restaurant} className="navigation-trigger" iconSize={14} />
       </div>
     </article>
   )

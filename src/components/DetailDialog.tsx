@@ -1,9 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRef } from 'react'
-import { Clock3, MapPin, Navigation, Phone, Star, X } from 'lucide-react'
+import { Clock3, MapPin, Phone, Star, X } from 'lucide-react'
 import type { RestaurantWithDistance } from '../types'
 import { formatDistance, statusText } from '../utils'
-import { directionsUrl } from './RestaurantList'
+import { NavigationChooser } from './NavigationChooser'
 
 type Props = {
   restaurant: RestaurantWithDistance | null
@@ -34,7 +34,7 @@ export function DetailDialog({ restaurant, open, onOpenChange }: Props) {
               <div><dt><MapPin size={17} />地址</dt><dd>{restaurant.address}<small>距你 {formatDistance(restaurant.distance)}</small></dd></div>
               {restaurant.phone && <div><dt><Phone size={17} />电话</dt><dd>{restaurant.phone}</dd></div>}
             </dl>
-            <div className="detail-actions"><Dialog.Close asChild><button className="secondary-button" type="button">返回地图</button></Dialog.Close><a className="primary-button" href={directionsUrl(restaurant)} target="_blank" rel="noreferrer"><Navigation size={17} />路线导航</a></div>
+            <div className="detail-actions"><Dialog.Close asChild><button className="secondary-button" type="button">返回地图</button></Dialog.Close><NavigationChooser restaurant={restaurant} className="primary-button" iconSize={17} /></div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
