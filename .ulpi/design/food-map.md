@@ -88,6 +88,8 @@
 
 - Popup 宽 320px；信息密度高，图片与文本左右布局；两个按钮不等权，详情主按钮、导航次按钮。
 - Dialog 初始焦点在标题，关闭后回到触发源；图片缺失降级；营业时间逐日列出。
+- 手机端 DetailDialog 与 NavigationChooser 均为底部弹层：必须显式设置 `left: 0; right: 0; width: 100%; transform: none`，不能仅覆盖桌面端 `transform` 而遗留 `left: 50%`。弹层任何边缘不得超出视觉视口。
+- DetailDialog 使用 `max-height: calc(100dvh - 28px)` 与内部纵向滚动，底部操作区计入 `safe-area-inset-bottom`；NavigationChooser 在 320–767px 宽度下完整展示标题、说明、两个地图选项、坐标提示和关闭按钮，不允许横向滚动或裁切。
 
 ### MobileResultsSheet
 
@@ -131,16 +133,16 @@ type Restaurant = {
 - Identity lock：0 个系统外色值；单一 accent、radius scale、Lucide 图标族、固定字体角色。
 - Anti-slop：0 个禁用字体/渐变/玻璃拟态/三等分卡片/嵌套卡片/空泛文案；签名标记明确。
 - 状态：初始、加载、成功、空、错误、定位失败、瓦片失败均覆盖。
-- Accessibility：对比度已记录；键盘路径、焦点、ARIA、reduced-motion、48px 触控与 safe area 均覆盖。
+- Accessibility：对比度已记录；键盘路径、焦点、ARIA、reduced-motion、48px 触控与 safe area 均覆盖；移动端详情与导航弹层在 320px、390px、430px 视口均完整位于屏幕内。
 - Layout：工具栏、媒体列表、地图浮层三种布局族；每个视图只有搜索或当前详情一个主操作。
 - Scored critique：distinctiveness 3; hierarchy 4; consistency 4; accessibility 4; state coverage 4; copy 3; restraint 4; motion 4。总分 30/32，无轴 ≤2。
-- Revise-and-justify：将两行顶栏改为单层搜索台，固定搜索键第 4 列以消除条件渲染错位；只禁用滚轮缩放，保留用户明确发起的双击/双指/框选缩放；餐碗改为双色分类大头针并增加文字图例；移动面板由 React 高频状态更新改为 rAF 合成层位移，消除 45 项结果树反复渲染；导航从陌生网页改为用户主动选择高德或系统地图；数据门槛修订为严格 45 点。
+- Revise-and-justify：将两行顶栏改为单层搜索台，固定搜索键第 4 列以消除条件渲染错位；只禁用滚轮缩放，保留用户明确发起的双击/双指/框选缩放；餐碗改为双色分类大头针并增加文字图例；移动面板由 React 高频状态更新改为 rAF 合成层位移，消除 45 项结果树反复渲染；导航从陌生网页改为用户主动选择高德或系统地图；移动端底部弹层显式归零左右定位，避免继承桌面 `left: 50%` 后只显示半屏；数据门槛修订为严格 45 点。
 
 ## Build handoff
 
 - Target agent: `react-vite-tailwind-engineer`
 - Stack: React 18+, TypeScript, Vite, Tailwind CSS, React Leaflet/Leaflet, Radix Dialog/Popover, Lucide React。
 - Setup: 使用 Radix primitives 并以锁定 token 主题化；不要手工重实现其可访问组件。
-- Acceptance: 可直接 `npm install && npm run dev`；严格 45 个店铺点位；默认从中国境内可访问的高德瓦片加载底图，attribution 正确，WGS84 数据转 GCJ-02 后标记与底图对齐，并可用环境变量替换供应商/坐标系；搜索键始终位于搜索框最右列；只有滚轮/触控板上下滚动不缩放地图，双击/双指/框选和 `+ / −` 均可缩放；大头针固定尺寸且缩放不抖动，甜品饮品为蓝色、正餐小吃为橙色并有文字图例；移动面板拖动期间 React 状态更新为 0 次且使用 rAF；列表、地图弹窗和详情均能选择高德/系统地图；搜索/筛选/加载/空/错误可演示；GitHub Pages Actions 配置完整；无 TypeScript/build 错误；README 含部署说明。
+- Acceptance: 可直接 `npm install && npm run dev`；严格 45 个店铺点位；默认从中国境内可访问的高德瓦片加载底图，attribution 正确，WGS84 数据转 GCJ-02 后标记与底图对齐，并可用环境变量替换供应商/坐标系；搜索键始终位于搜索框最右列；只有滚轮/触控板上下滚动不缩放地图，双击/双指/框选和 `+ / −` 均可缩放；大头针固定尺寸且缩放不抖动，甜品饮品为蓝色、正餐小吃为橙色并有文字图例；移动面板拖动期间 React 状态更新为 0 次且使用 rAF；列表、地图弹窗和详情均能选择高德/系统地图；DetailDialog 与 NavigationChooser 在 320px、390px、430px 手机宽度下左右边界均在视口内、内容可完整滚动查看且无横向溢出；搜索/筛选/加载/空/错误可演示；GitHub Pages Actions 配置完整；无 TypeScript/build 错误；README 含部署说明。
 
 Implement exactly this spec. Theme the design system with our locked tokens; do NOT redesign or re-implement its components.
