@@ -44,7 +44,7 @@
 | 成功 | 匹配结果与数量 | 对应标记 | 继续筛选/选择 |
 | 空 | 插画式餐碗轮廓、当前条件摘要 | 无结果但保留当前位置 | 清除条件 |
 | 错误 | 具体提示“暂时没能完成搜索” | 保留上次成功标记 | 重试 |
-| 离线 | 顶部 toast | OSM 瓦片可能保留缓存 | 恢复网络后重试 |
+| 离线 | 顶部 toast | 国内底图瓦片可能保留缓存 | 恢复网络后重试 |
 
 刷新时从 URL 读取 `q`, `distance`, `rating`, `price`, `open`；后退/前进恢复搜索条件。筛选切换后使用 replaceState，显式搜索使用 pushState。模拟数据不要求登录或会话。
 
@@ -74,7 +74,10 @@
 
 ### FoodMap / FoodMarker
 
-- Leaflet + OSM，无 API Key。标记为可键盘聚焦按钮，aria-label 包含名称、评分、距离。
+- Leaflet 保持不变，默认底图改为中国境内可访问的高德标准瓦片；标记为可键盘聚焦按钮，aria-label 包含名称、评分、距离。
+- 地图服务必须集中在独立配置模块，支持 `VITE_MAP_TILE_URL`、`VITE_MAP_ATTRIBUTION`、`VITE_MAP_SUBDOMAINS` 与 `VITE_MAP_COORDINATE_SYSTEM` 覆盖。默认值用于无需 Key 的演示部署；正式商用应换成已获授权的高德 JS API、天地图或其他合规服务。
+- 高德底图使用 GCJ-02。餐厅模拟数据、浏览器 Geolocation 和导航目标继续保存为 WGS84；渲染地图中心、边界、餐厅标记及当前位置前统一转换为 GCJ-02，距离计算与导航参数不得使用转换后的显示坐标。自定义 WGS84 瓦片时可通过环境变量关闭转换。
+- 地图 attribution 必须显示“高德地图”并链接到供应商，不得继续显示 OpenStreetMap。
 - 只设置 `scrollWheelZoom=false`；鼠标滚轮和触控板上下滚动不缩放地图。保留 `touchZoom=true`、`doubleClickZoom=true`、`boxZoom=true`、明确的 `+ / −` 控件与程序化列表定位。
 - 标记改为固定 38×48 的经典大头针轮廓，中心显示稳定编号。地图缩放期间不对 marker wrapper 或内部元素执行宽高、margin、transform transition。选中只增加白色/深色双描边，不放大、不上移。
 - 分类采用已有锁定色作为数据编码：`dessert`（甜品、饮品、咖啡、烘焙、冷饮、糖水）使用 info `#287C9E`；`meal`（其余正餐、小吃、火锅、烧烤、粉面）使用 accent `#E65C32`。这不是第二操作强调色。地图左下提供“甜品饮品 / 正餐小吃”两项静态图例，不能只靠颜色表达，标记 aria-label 同时读出类别。
@@ -138,6 +141,6 @@ type Restaurant = {
 - Target agent: `react-vite-tailwind-engineer`
 - Stack: React 18+, TypeScript, Vite, Tailwind CSS, React Leaflet/Leaflet, Radix Dialog/Popover, Lucide React。
 - Setup: 使用 Radix primitives 并以锁定 token 主题化；不要手工重实现其可访问组件。
-- Acceptance: 可直接 `npm install && npm run dev`；严格 45 个店铺点位；搜索键始终位于搜索框最右列；只有滚轮/触控板上下滚动不缩放地图，双击/双指/框选和 `+ / −` 均可缩放；大头针固定尺寸且缩放不抖动，甜品饮品为蓝色、正餐小吃为橙色并有文字图例；移动面板拖动期间 React 状态更新为 0 次且使用 rAF；列表、地图弹窗和详情均能选择高德/系统地图；搜索/筛选/加载/空/错误可演示；GitHub Pages Actions 配置完整；无 TypeScript/build 错误；README 含部署说明。
+- Acceptance: 可直接 `npm install && npm run dev`；严格 45 个店铺点位；默认从中国境内可访问的高德瓦片加载底图，attribution 正确，WGS84 数据转 GCJ-02 后标记与底图对齐，并可用环境变量替换供应商/坐标系；搜索键始终位于搜索框最右列；只有滚轮/触控板上下滚动不缩放地图，双击/双指/框选和 `+ / −` 均可缩放；大头针固定尺寸且缩放不抖动，甜品饮品为蓝色、正餐小吃为橙色并有文字图例；移动面板拖动期间 React 状态更新为 0 次且使用 rAF；列表、地图弹窗和详情均能选择高德/系统地图；搜索/筛选/加载/空/错误可演示；GitHub Pages Actions 配置完整；无 TypeScript/build 错误；README 含部署说明。
 
 Implement exactly this spec. Theme the design system with our locked tokens; do NOT redesign or re-implement its components.

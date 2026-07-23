@@ -1,6 +1,6 @@
 # 永州寻味地图
 
-一个可直接运行的永州美食探索前端。使用 React、TypeScript、Tailwind CSS、React Leaflet 与 OpenStreetMap，实现搜索、筛选、定位、列表—地图双向联动、餐厅详情和移动端三档结果面板。
+一个可直接运行的永州美食探索前端。使用 React、TypeScript、Tailwind CSS、React Leaflet 与国内可访问的高德标准瓦片，实现搜索、筛选、定位、列表—地图双向联动、餐厅详情和移动端三档结果面板。
 
 ## 本地启动
 
@@ -30,16 +30,32 @@ npm run preview
 
 ## 地图服务配置
 
-默认瓦片源为 OpenStreetMap 标准服务，不需要 API Key，配置位于 `src/components/FoodMap.tsx`：
+地图服务与坐标处理集中在 `src/map/config.ts` 和 `src/map/coordinates.ts`。默认使用中国境内可访问的高德标准瓦片，演示环境无需 API Key：
 
-```tsx
-<TileLayer
-  attribution='&copy; OpenStreetMap contributors'
-  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-/>
+```text
+https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}
 ```
 
-如果部署流量较大，请遵守 OpenStreetMap 的瓦片使用政策，并换成合规的商用瓦片提供商。只需替换 `url` 与 `attribution`；若服务需要令牌，建议通过 Vite 环境变量（如 `VITE_TILE_TOKEN`）注入，不要把密钥提交到仓库。
+默认子域为 `1–4`，attribution 显示并链接到高德地图。可通过以下 Vite 环境变量替换服务，而无需修改组件：
+
+| 环境变量 | 默认值 | 说明 |
+|---|---|---|
+| `VITE_MAP_TILE_URL` | 高德标准瓦片 URL | Leaflet 瓦片模板 |
+| `VITE_MAP_ATTRIBUTION` | 高德地图链接 | Leaflet attribution HTML |
+| `VITE_MAP_SUBDOMAINS` | `1234` | 子域字符串，也支持 `1,2,3,4` |
+| `VITE_MAP_COORDINATE_SYSTEM` | `gcj02` | 可选 `gcj02` 或 `wgs84` |
+
+餐厅数据、浏览器 Geolocation 和导航目标始终保存为 WGS84。默认高德瓦片为 GCJ-02，因此只有传入 Leaflet 的初始中心、视野边界、餐厅标记和当前位置会转换为 GCJ-02；中国境外坐标不会转换。距离计算与导航链接仍使用原始 WGS84。替换为 WGS84 瓦片时请设置：
+
+```bash
+VITE_MAP_TILE_URL="https://你的服务/{z}/{x}/{y}.png" \
+VITE_MAP_ATTRIBUTION="你的地图服务" \
+VITE_MAP_SUBDOMAINS="" \
+VITE_MAP_COORDINATE_SYSTEM=wgs84 \
+npm run dev
+```
+
+默认直连瓦片仅用于演示。正式生产或商用部署需按照地图供应商的授权条款接入已获许可的服务。若改用高德官方 JavaScript API，需要申请 Web 端 Key 并配置安全密钥；密钥应通过部署环境注入，不要提交到仓库。
 
 ## 路线导航
 

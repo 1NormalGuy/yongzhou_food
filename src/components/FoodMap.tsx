@@ -2,6 +2,9 @@ import L from 'leaflet'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ExternalLink, Star } from 'lucide-react'
+import { YONGZHOU_CENTER } from '../data/restaurants'
+import { MAP_CONFIG } from '../map/config'
+import { toMapCoordinates } from '../map/coordinates'
 import type { Coordinates, RestaurantCategory, RestaurantWithDistance } from '../types'
 import { formatDistance, statusText } from '../utils'
 import { NavigationChooser } from './NavigationChooser'
@@ -17,6 +20,8 @@ type Props = {
 }
 
 const pinPath = 'M19 1.5C9.1 1.5 1.5 9.1 1.5 19c0 12.7 17.5 27.5 17.5 27.5S36.5 31.7 36.5 19C36.5 9.1 28.9 1.5 19 1.5Z'
+const mapCenter = toMapCoordinates(YONGZHOU_CENTER, MAP_CONFIG.coordinateSystem)
+const displayCoordinates = (coordinates: Coordinates) => toMapCoordinates(coordinates, MAP_CONFIG.coordinateSystem)
 
 function classicPinIcon(sourceIndex: number, category: RestaurantCategory, selected: boolean) {
   return L.divIcon({
@@ -36,15 +41,24 @@ function MapViewport({ restaurants, selectedId, userLocation }: Pick<Props, 'res
   useEffect(() => {
     if (!selectedId) return
     const restaurant = restaurants.find((item) => item.id === selectedId)
-    if (restaurant) map.flyTo([restaurant.lat, restaurant.lng], 16, { animate: !reducedMotion, duration: reducedMotion ? 0 : 0.65 })
+    if (restaurant) {
+      const displayPosition = displayCoordinates(restaurant)
+      map.flyTo([displayPosition.lat, displayPosition.lng], 16, { animate: !reducedMotion, duration: reducedMotion ? 0 : 0.65 })
+    }
   }, [map, reducedMotion, restaurants, selectedId])
 
   useEffect(() => {
     const key = restaurants.map((item) => item.id).join('|') + (userLocation ? `@${userLocation.lat}` : '')
     if (key === previousResults.current || selectedId) return
     previousResults.current = key
-    const points = restaurants.map((item) => L.latLng(item.lat, item.lng))
-    if (userLocation) points.push(L.latLng(userLocation.lat, userLocation.lng))
+    const points = restaurants.map((item) => {
+      const displayPosition = displayCoordinates(item)
+      return L.latLng(displayPosition.lat, displayPosition.lng)
+    })
+    if (userLocation) {
+      const displayUserLocation = displayCoordinates(userLocation)
+      points.push(L.latLng(displayUserLocation.lat, displayUserLocation.lng))
+    }
     if (points.length === 1) map.setView(points[0], 15)
     else if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [54, 54], maxZoom: 14, animate: !reducedMotion })
   }, [map, reducedMotion, restaurants, selectedId, userLocation])
@@ -65,6 +79,7 @@ function ZoomControlAccessibility() {
 
 export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLocation, loading, onTileError }: Props) {
   const markerRefs = useRef<Record<string, L.Marker | null>>({})
+  const displayUserLocation = userLocation ? displayCoordinates(userLocation) : null
   useEffect(() => {
     if (!selectedId) return
     const timer = window.setTimeout(() => markerRefs.current[selectedId]?.openPopup(), 180)
@@ -82,19 +97,20 @@ export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLoca
 
   return (
     <div className={`food-map ${loading ? 'food-map--loading' : ''}`} aria-label="永州餐厅位置地图">
-      <MapContainer center={[26.4345, 111.608]} zoom={13} zoomControl scrollWheelZoom={false}
+      <MapContainer center={[mapCenter.lat, mapCenter.lng]} zoom={13} zoomControl scrollWheelZoom={false}
         touchZoom doubleClickZoom boxZoom className="leaflet-map" preferCanvas>
         <ZoomControlAccessibility />
-        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" eventHandlers={{ tileerror: onTileError }} />
+        <TileLayer attribution={MAP_CONFIG.attribution} url={MAP_CONFIG.tileUrl} subdomains={MAP_CONFIG.subdomains}
+          eventHandlers={{ tileerror: onTileError }} />
         <MapViewport restaurants={restaurants} selectedId={selectedId} userLocation={userLocation} />
-        {userLocation && <>
-          <CircleMarker center={[userLocation.lat, userLocation.lng]} radius={15} pathOptions={{ color: '#287C9E', fillColor: '#287C9E', fillOpacity: 0.16, weight: 0 }} className="location-pulse" />
-          <CircleMarker center={[userLocation.lat, userLocation.lng]} radius={6} pathOptions={{ color: '#FFFFFF', fillColor: '#287C9E', fillOpacity: 1, weight: 3 }} />
+        {displayUserLocation && <>
+          <CircleMarker center={[displayUserLocation.lat, displayUserLocation.lng]} radius={15} pathOptions={{ color: '#287C9E', fillColor: '#287C9E', fillOpacity: 0.16, weight: 0 }} className="location-pulse" />
+          <CircleMarker center={[displayUserLocation.lat, displayUserLocation.lng]} radius={6} pathOptions={{ color: '#FFFFFF', fillColor: '#287C9E', fillOpacity: 1, weight: 3 }} />
         </>}
         {restaurants.map((restaurant) => {
           const selected = selectedId === restaurant.id
-          return <Marker key={restaurant.id} position={[restaurant.lat, restaurant.lng]} icon={classicPinIcon(restaurant.sourceIndex, restaurant.category, selected)} keyboard riseOnHover zIndexOffset={selected ? 1000 : 0}
+          const displayPosition = displayCoordinates(restaurant)
+          return <Marker key={restaurant.id} position={[displayPosition.lat, displayPosition.lng]} icon={classicPinIcon(restaurant.sourceIndex, restaurant.category, selected)} keyboard riseOnHover zIndexOffset={selected ? 1000 : 0}
             title={`${restaurant.name}，评分 ${restaurant.rating}`} ref={(ref) => { markerRefs.current[restaurant.id] = ref }}
             eventHandlers={{ click: () => onSelect(restaurant.id) }}>
             <Popup minWidth={292} maxWidth={320} closeButton className="restaurant-popup">
