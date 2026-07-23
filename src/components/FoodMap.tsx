@@ -1,5 +1,5 @@
 import L from 'leaflet'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { ExternalLink, Star } from 'lucide-react'
 import { YONGZHOU_CENTER } from '../data/restaurants'
@@ -19,14 +19,20 @@ type Props = {
   onTileError: () => void
 }
 
-const pinPath = 'M19 1.5C9.1 1.5 1.5 9.1 1.5 19c0 12.7 17.5 27.5 17.5 27.5S36.5 31.7 36.5 19C36.5 9.1 28.9 1.5 19 1.5Z'
+const pinPath = 'M14 1C6.8 1 1 6.8 1 14c0 9.4 13 21 13 21s13-11.6 13-21C27 6.8 21.2 1 14 1Z'
 const mapCenter = toMapCoordinates(YONGZHOU_CENTER, MAP_CONFIG.coordinateSystem)
 const displayCoordinates = (coordinates: Coordinates) => toMapCoordinates(coordinates, MAP_CONFIG.coordinateSystem)
+const categoryLabels: Record<RestaurantCategory, string> = {
+  barbecue: '烧烤',
+  noodles: '粉面',
+  snack: '小吃',
+  other: '其他',
+}
 
-function classicPinIcon(sourceIndex: number, category: RestaurantCategory, selected: boolean) {
+function classicPinIcon(category: RestaurantCategory, selected: boolean) {
   return L.divIcon({
     className: 'food-marker-wrapper',
-    html: `<span class="food-pin food-pin--${category} ${selected ? 'food-pin--selected' : ''}"><svg viewBox="0 0 38 48" aria-hidden="true" focusable="false"><path class="pin-ring pin-ring--outer" d="${pinPath}"/><path class="pin-ring pin-ring--inner" d="${pinPath}"/><path class="pin-body" d="${pinPath}"/><circle cx="19" cy="18.5" r="11" class="pin-center"/><text x="19" y="22.5" text-anchor="middle">${sourceIndex}</text></svg></span>`,
+    html: `<span class="food-pin food-pin--${category} ${selected ? 'food-pin--selected' : ''}"><svg viewBox="0 0 28 36" aria-hidden="true" focusable="false"><path class="pin-ring pin-ring--outer" d="${pinPath}"/><path class="pin-ring pin-ring--inner" d="${pinPath}"/><path class="pin-body" d="${pinPath}"/><circle cx="14" cy="13.5" r="7" class="pin-center"/></svg></span>`,
     iconSize: [38, 48],
     iconAnchor: [19, 47],
     popupAnchor: [0, -45],
@@ -77,6 +83,23 @@ function ZoomControlAccessibility() {
   return null
 }
 
+const pinScaleForZoom = (zoom: number) => {
+  if (zoom <= 11) return 0.62
+  if (zoom >= 16) return 1
+  return 0.62 + (zoom - 11) * 0.08
+}
+
+function PinScaleController() {
+  const map = useMap()
+  useEffect(() => {
+    const updateScale = () => map.getContainer().style.setProperty('--pin-scale', String(pinScaleForZoom(map.getZoom())))
+    updateScale()
+    map.on('zoom zoomend', updateScale)
+    return () => { map.off('zoom zoomend', updateScale) }
+  }, [map])
+  return null
+}
+
 export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLocation, loading, onTileError }: Props) {
   const markerRefs = useRef<Record<string, L.Marker | null>>({})
   const displayUserLocation = userLocation ? displayCoordinates(userLocation) : null
@@ -89,8 +112,7 @@ export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLoca
   useEffect(() => {
     restaurants.forEach((restaurant) => {
       const element = markerRefs.current[restaurant.id]?.getElement()
-      const categoryLabel = restaurant.category === 'dessert' ? '甜品饮品' : '正餐小吃'
-      element?.setAttribute('aria-label', `${restaurant.name}，${categoryLabel}，评分 ${restaurant.rating}，距离 ${formatDistance(restaurant.distance)}`)
+      element?.setAttribute('aria-label', `${restaurant.name}，${categoryLabels[restaurant.category]}，评分 ${restaurant.rating}，距离 ${formatDistance(restaurant.distance)}`)
       element?.setAttribute('role', 'button')
     })
   }, [restaurants])
@@ -100,6 +122,7 @@ export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLoca
       <MapContainer center={[mapCenter.lat, mapCenter.lng]} zoom={13} zoomControl scrollWheelZoom={false}
         touchZoom doubleClickZoom boxZoom className="leaflet-map" preferCanvas>
         <ZoomControlAccessibility />
+        <PinScaleController />
         <TileLayer attribution={MAP_CONFIG.attribution} url={MAP_CONFIG.tileUrl} subdomains={MAP_CONFIG.subdomains}
           eventHandlers={{ tileerror: onTileError }} />
         <MapViewport restaurants={restaurants} selectedId={selectedId} userLocation={userLocation} />
@@ -110,7 +133,7 @@ export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLoca
         {restaurants.map((restaurant) => {
           const selected = selectedId === restaurant.id
           const displayPosition = displayCoordinates(restaurant)
-          return <Marker key={restaurant.id} position={[displayPosition.lat, displayPosition.lng]} icon={classicPinIcon(restaurant.sourceIndex, restaurant.category, selected)} keyboard riseOnHover zIndexOffset={selected ? 1000 : 0}
+          return <Marker key={restaurant.id} position={[displayPosition.lat, displayPosition.lng]} icon={classicPinIcon(restaurant.category, selected)} keyboard riseOnHover zIndexOffset={selected ? 1000 : 0}
             title={`${restaurant.name}，评分 ${restaurant.rating}`} ref={(ref) => { markerRefs.current[restaurant.id] = ref }}
             eventHandlers={{ click: () => onSelect(restaurant.id) }}>
             <Popup minWidth={292} maxWidth={320} closeButton className="restaurant-popup">
@@ -127,8 +150,10 @@ export function FoodMap({ restaurants, selectedId, onSelect, onDetails, userLoca
         })}
       </MapContainer>
       <div className="map-legend" role="group" aria-label="餐厅类别图例">
-        <span><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M8 1C4.1 1 1 4.1 1 8c0 5 7 11 7 11s7-6 7-11c0-3.9-3.1-7-7-7Z" /></svg>甜品饮品</span>
-        <span><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M8 1C4.1 1 1 4.1 1 8c0 5 7 11 7 11s7-6 7-11c0-3.9-3.1-7-7-7Z" /></svg>正餐小吃</span>
+        <span className="legend-barbecue"><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M8 1C4.1 1 1 4.1 1 8c0 5 7 11 7 11s7-6 7-11c0-3.9-3.1-7-7-7Z" /></svg>烧烤</span>
+        <span className="legend-noodles"><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M8 1C4.1 1 1 4.1 1 8c0 5 7 11 7 11s7-6 7-11c0-3.9-3.1-7-7-7Z" /></svg>粉面</span>
+        <span className="legend-snack"><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M8 1C4.1 1 1 4.1 1 8c0 5 7 11 7 11s7-6 7-11c0-3.9-3.1-7-7-7Z" /></svg>小吃</span>
+        <span className="legend-other"><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M8 1C4.1 1 1 4.1 1 8c0 5 7 11 7 11s7-6 7-11c0-3.9-3.1-7-7-7Z" /></svg>其他</span>
       </div>
     </div>
   )

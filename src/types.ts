@@ -1,6 +1,6 @@
 export type Price = '¥' | '¥¥' | '¥¥¥'
 export type OpenStatus = 'open' | 'closing' | 'closed'
-export type RestaurantCategory = 'dessert' | 'meal'
+export type RestaurantCategory = 'barbecue' | 'noodles' | 'snack' | 'other'
 
 export type Restaurant = {
   id: string

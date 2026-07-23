@@ -21,27 +21,37 @@ type RestaurantInput = {
   reviews?: number; openStatus?: OpenStatus; hours?: string; phone?: string; category?: RestaurantCategory
 }
 
-const dessertKeywords = ['甜品', '饮品', '咖啡', '烘焙', '冷饮', '糖水']
-const classifyRestaurant = (input: RestaurantInput): RestaurantCategory => {
-  const searchable = [input.name, ...input.cuisine, ...input.featuredDish].join(' ')
-  return dessertKeywords.some((keyword) => searchable.includes(keyword)) ? 'dessert' : 'meal'
+const originalCategories: Record<number, RestaurantCategory> = {
+  1: 'other', 2: 'barbecue', 3: 'other', 4: 'snack', 5: 'other',
+  6: 'snack', 7: 'other', 8: 'barbecue', 9: 'other', 10: 'other',
+  11: 'other', 12: 'snack', 13: 'snack', 14: 'snack', 15: 'noodles',
+  16: 'noodles', 17: 'snack', 18: 'noodles', 19: 'snack', 20: 'noodles',
+  21: 'noodles', 22: 'snack', 23: 'barbecue', 24: 'snack', 25: 'other',
+  26: 'noodles', 27: 'snack', 28: 'snack', 29: 'other', 30: 'other',
+  31: 'snack', 32: 'barbecue', 33: 'other', 34: 'other', 35: 'snack',
+  36: 'snack', 37: 'noodles', 38: 'snack', 39: 'other', 40: 'other',
+  41: 'noodles', 42: 'noodles', 43: 'barbecue', 44: 'other', 45: 'snack',
 }
 
-const restaurant = (sourceIndex: number, input: RestaurantInput): Restaurant => ({
-  sourceIndex,
-  image: img(sourceIndex),
-  category: input.category ?? classifyRestaurant(input),
-  price: input.price ?? (sourceIndex % 5 === 0 ? '¥¥¥' : sourceIndex % 3 === 0 ? '¥¥' : '¥'),
-  rating: input.rating ?? 4.3 + ((sourceIndex * 7) % 6) / 10,
-  reviews: input.reviews ?? 86 + sourceIndex * 29,
-  openStatus: input.openStatus ?? (sourceIndex % 11 === 0 ? 'closed' : sourceIndex % 7 === 0 ? 'closing' : 'open'),
-  hours: input.hours ?? '10:00–22:00',
-  ...input,
-})
+const restaurant = (sourceIndex: number, input: RestaurantInput): Restaurant => {
+  const category = input.category ?? originalCategories[sourceIndex]
+  if (!category) throw new Error(`餐厅 ${sourceIndex} 缺少显式分类`)
+  return {
+    sourceIndex,
+    image: img(sourceIndex),
+    category,
+    price: input.price ?? (sourceIndex % 5 === 0 ? '¥¥¥' : sourceIndex % 3 === 0 ? '¥¥' : '¥'),
+    rating: input.rating ?? 4.3 + ((sourceIndex * 7) % 6) / 10,
+    reviews: input.reviews ?? 86 + sourceIndex * 29,
+    openStatus: input.openStatus ?? (sourceIndex % 11 === 0 ? 'closed' : sourceIndex % 7 === 0 ? 'closing' : 'open'),
+    hours: input.hours ?? '10:00–22:00',
+    ...input,
+  }
+}
 
 export const YONGZHOU_CENTER = { lat: 26.4345, lng: 111.608 }
 
-// 编号严格对应用户提供图片中的 1–45；同店多图按独立地图点保留。
+// 1–45 保留原清单；46–89 为本轮图片去重后的 44 个新增地点。
 export const restaurants: Restaurant[] = [
   restaurant(1, { id: 'suibian', name: '随缘小菜馆', address: '冷水滩区', lat: 26.4358, lng: 111.6123, cuisine: ['永州菜', '家常菜'], featuredDish: ['黑鸭煲', '银卷饼'], price: '¥¥', rating: 4.7, reviews: 328 }),
   restaurant(2, { id: 'diwang', name: '帝王烧烤', address: '冷水滩区', lat: 26.4413, lng: 111.6029, cuisine: ['烧烤', '夜宵'], featuredDish: ['两块钱的牛肉串'], price: '¥¥', rating: 4.6, reviews: 516, hours: '17:00–次日 02:00' }),
@@ -49,7 +59,7 @@ export const restaurants: Restaurant[] = [
   restaurant(4, { id: 'shuxin', name: '舒心冷饮', address: '冷水滩区市委对面', lat: 26.4269, lng: 111.6167, cuisine: ['冷饮', '甜品'], featuredDish: ['葡萄冰'], rating: 4.8, reviews: 201, hours: '12:00–23:00' }),
   restaurant(5, { id: 'pangge', name: '胖哥俩', address: '冷水滩区万达广场三楼', lat: 26.4525, lng: 111.5952, cuisine: ['肉蟹煲', '海鲜'], featuredDish: ['肉蟹煲'], price: '¥¥¥', rating: 4.4, reviews: 1086 }),
   restaurant(6, { id: 'dashu', name: '大树咖啡', address: '永州市体育馆对面', lat: 26.4238, lng: 111.5988, cuisine: ['咖啡厅', '轻食'], featuredDish: ['拍照打卡'], price: '¥¥', rating: 4.9, reviews: 389, hours: '09:00–23:30' }),
-  restaurant(7, { id: 'malagu', name: '马拉古烧烤', address: '冷水滩区帝王广场', lat: 26.4402, lng: 111.6001, cuisine: ['烧烤', '夜宵'], featuredDish: ['牛肉串'], price: '¥¥', hours: '18:00–次日 01:30' }),
+  restaurant(7, { id: 'malagu', name: '马拉古烧烤', address: '帝皇广场1栋马拉古吃喝铺子', lat: 26.4402, lng: 111.6001, cuisine: ['吃喝铺子', '夜宵'], featuredDish: ['牛肉串'], price: '¥¥', hours: '18:00–次日 01:30' }),
   restaurant(8, { id: 'xiangyonghui', name: '湘永汇', address: '冷水滩区湘永名邸', lat: 26.4303, lng: 111.6204, cuisine: ['湘菜', '烧烤'], featuredDish: ['彩椒牛肉串', '牛油砂锅粥', '鱼片粥'], price: '¥¥', rating: 4.6, reviews: 633, hours: '16:30–次日 01:00' }),
   restaurant(9, { id: 'lingnanxiaosheng', name: '岭南小生', address: '冷水滩区万达广场三楼', lat: 26.4518, lng: 111.5961, cuisine: ['粤菜', '茶点'], featuredDish: ['虾饺', '干炒牛河'], price: '¥¥' }),
   restaurant(10, { id: 'hongfangzi-yanjiang', name: '红房子下河线餐厅·沿江点', address: '冷水滩区河西沿江路', lat: 26.4387, lng: 111.5914, cuisine: ['永州菜', '河鲜'], featuredDish: ['蒜蓉罗氏虾', '风生水起鸡'], price: '¥¥¥', rating: 4.7, reviews: 455 }),
@@ -65,7 +75,7 @@ export const restaurants: Restaurant[] = [
   restaurant(20, { id: 'liujidaximen', name: '刘记大西门凉拌粉', address: '冷水滩区河西', lat: 26.4475, lng: 111.5858, cuisine: ['米粉', '永州小吃'], featuredDish: ['腊肠腊肉双拼煲仔饭', '凉拌粉'], rating: 4.9, reviews: 865, hours: '06:00–14:30' }),
   restaurant(21, { id: 'xiaopu', name: '肖蒲罐罐米线', address: '冷水滩区嘉隆广场', lat: 26.4241, lng: 111.6101, cuisine: ['米线', '小吃'], featuredDish: ['百香果酸汤米线', '臭豆腐米线', '丰富配菜'], rating: 4.7, reviews: 621 }),
   restaurant(22, { id: 'hongdousha', name: '红豆沙桂花小丸子', address: '冷水滩区富源小区摊位', lat: 26.4551, lng: 111.6144, cuisine: ['甜品', '小吃'], featuredDish: ['红豆沙桂花小丸子'] }),
-  restaurant(23, { id: 'aiziwang', name: '矮子王烧烤', address: '冷水滩区河西', lat: 26.4492, lng: 111.5931, cuisine: ['烧烤', '夜宵'], featuredDish: ['饺子', '烤豆腐串', '喝螺'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(23, { id: 'aiziwang', name: '矮子王烧烤', address: '冷水滩区零陵南路460-462号', lat: 26.4492, lng: 111.5931, cuisine: ['烧烤', '夜宵'], featuredDish: ['饺子', '烤豆腐串', '喝螺'], price: '¥¥', hours: '17:00–次日 02:00' }),
   restaurant(24, { id: 'zhenbaoluwei', name: '真宝卤味', address: '冷水滩区富源小区大新超市门口', lat: 26.4558, lng: 111.6154, cuisine: ['卤味', '凉菜'], featuredDish: ['香酥鸭', '凉拌菜'], price: '¥¥', rating: 4.6, reviews: 412 }),
   restaurant(25, { id: 'guangshunxing', name: '广顺兴', address: '冷水滩区帝王广场', lat: 26.4394, lng: 111.6041, cuisine: ['粤菜', '煲类'], featuredDish: ['叉烧', '烧鹅', '猪肚鸡煲'], price: '¥¥¥' }),
   restaurant(26, { id: 'deyi', name: '德一牛肉粉', address: '永州市体育馆对面', lat: 26.4224, lng: 111.5971, cuisine: ['牛肉粉', '早餐'], featuredDish: ['牛肉粉', '牛排粉'], rating: 4.8, reviews: 994, hours: '06:00–14:00' }),
@@ -88,4 +98,48 @@ export const restaurants: Restaurant[] = [
   restaurant(43, { id: 'hema-yeshi', name: '河马夜市', address: '冷水滩区河西永州大市场', lat: 26.4512, lng: 111.5816, cuisine: ['夜市', '烧烤'], featuredDish: ['炸南瓜花', '蒜香烤鱼', '生腌蟹钳'], price: '¥¥', hours: '17:00–次日 02:00' }),
   restaurant(44, { id: 'huiwei-heiyabao', name: '回味黑鸭煲', address: '冷水滩区万达广场三楼', lat: 26.4546, lng: 111.5943, cuisine: ['煲类', '永州菜'], featuredDish: ['黑鸭煲', '糖醋里脊'], price: '¥¥' }),
   restaurant(45, { id: 'cuipi-shaoji', name: '脆皮烧鸡', address: '冷水滩区富源小区摊位', lat: 26.4564, lng: 111.6139, cuisine: ['烧鸡', '街头小吃'], featuredDish: ['脆皮烧鸡'] }),
+  restaurant(46, { id: 'yesi-shaokao', category: 'barbecue', name: '野肆烧烤', address: '冷水滩区菱角山街道湘江西路北侧香河一品3栋3-105-1', lat: 26.4451, lng: 111.5865, cuisine: ['烧烤', '夜宵'], featuredDish: ['炭火烧烤'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(47, { id: 'liangguzi-shaokao', category: 'barbecue', name: '亮古子烧烤', address: '冷水滩区菱角山街道春江路6号地', lat: 26.4602, lng: 111.6048, cuisine: ['烧烤', '夜宵'], featuredDish: ['牛油牛肉'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(48, { id: 'wujie-shaokao', category: 'barbecue', name: '吴姐烧烤', address: '冷水滩区鸿腾·御景', lat: 26.4498, lng: 111.6107, cuisine: ['烧烤', '夜宵'], featuredDish: ['烤五花肉'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(49, { id: 'zenglaoban-shaokao', category: 'barbecue', name: '曾老板烧烤', address: '石牌楼街与零陵中路交叉口西北100米', lat: 26.4381, lng: 111.6059, cuisine: ['烧烤', '夜宵'], featuredDish: ['炭火烧烤'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(50, { id: 'bayi-shaokao', category: 'barbecue', name: '八一烧烤', address: '建设路与百业街交叉口东南20米', lat: 26.464, lng: 111.6121, cuisine: ['烧烤', '夜宵'], featuredDish: ['炭火烧烤'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(51, { id: 'baimei-shaokao', category: 'barbecue', name: '白眉烧烤', address: '零陵路893号', lat: 26.4372, lng: 111.5994, cuisine: ['烧烤', '夜宵'], featuredDish: ['炭火烧烤'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(52, { id: 'youdehe-shaokao', category: 'barbecue', name: '友得喝烧烤', address: '梅湾街道麒麟公馆2-1栋104-110号', lat: 26.4312, lng: 111.6251, cuisine: ['烧烤', '夜宵'], featuredDish: ['炭火烧烤'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(53, { id: 'huanlaoban-shaokao', category: 'barbecue', name: '欢老板烧烤', address: '潇湘西路与湘江西路辅路交叉口西北80米', lat: 26.447, lng: 111.5799, cuisine: ['烧烤', '夜宵'], featuredDish: ['炭火烧烤'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(54, { id: 'chuqiu-dongbei-shaokao', category: 'barbecue', name: '褚秋东北烧烤', address: '总店文昌路212号；分店永州大道西侧书雅东苑第二栋一层3-5号门面', lat: 26.4247, lng: 111.6318, cuisine: ['东北烧烤', '夜宵'], featuredDish: ['东北烧烤'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(55, { id: 'eryuan-shaokaowu', category: 'barbecue', name: '二元烧烤屋', address: '舜皇路与零陵南路交叉口东20米', lat: 26.4189, lng: 111.6012, cuisine: ['烧烤', '夜宵'], featuredDish: ['烤五花肉', '牛肉炒饭'], price: '¥¥', hours: '17:00–次日 02:00' }),
+  restaurant(56, { id: 'tiantian-guonian', category: 'noodles', name: '天天过年粉店', address: '育才一巷与育才路交叉口东北200米（近理想城）', lat: 26.4292, lng: 111.6189, cuisine: ['米粉', '早餐'], featuredDish: ['米粉'], hours: '06:00–14:00' }),
+  restaurant(57, { id: 'yuanzhiwei-lufen', category: 'noodles', name: '原之味卤粉', address: '冷水滩区政府对面', lat: 26.435, lng: 111.6264, cuisine: ['卤粉', '早餐'], featuredDish: ['卤粉'], hours: '06:00–14:00' }),
+  restaurant(58, { id: 'tangji-lufen', category: 'noodles', name: '唐记卤粉', address: '翠竹路与南湖路交叉口东北40米', lat: 26.4217, lng: 111.6219, cuisine: ['卤粉', '早餐'], featuredDish: ['卤粉'], hours: '06:00–14:00' }),
+  restaurant(59, { id: 'tangjia-mianguan', category: 'noodles', name: '唐家面馆', address: '冷水滩中医院对面', lat: 26.4408, lng: 111.6146, cuisine: ['面馆', '早餐'], featuredDish: ['汤面'], hours: '06:00–15:00' }),
+  restaurant(60, { id: 'tiancheng-7', category: 'noodles', name: '天成7号', address: '零陵南路与亲水路交叉口西320米', lat: 26.4138, lng: 111.5967, cuisine: ['粉面', '汤馆'], featuredDish: ['骨髓汤', '猪蹄'], price: '¥¥' }),
+  restaurant(61, { id: 'laoqing-zhuzafen', category: 'noodles', name: '佬卿猪杂粉', address: '煤勘路与珍珠路交叉口东北20米', lat: 26.4576, lng: 111.6083, cuisine: ['猪杂粉', '早餐'], featuredDish: ['猪杂粉'], hours: '06:00–14:00' }),
+  restaurant(62, { id: 'zhangshi-niuroufen', category: 'noodles', name: '张氏牛肉粉', address: '总店梧桐街道车站路120号；分点建设路与百业街交叉口南40米', lat: 26.4621, lng: 111.5992, cuisine: ['牛肉粉', '早餐'], featuredDish: ['牛肉粉'], hours: '06:00–14:00' }),
+  restaurant(63, { id: 'hetianxia-shouganmian', category: 'noodles', name: '和天下手擀面', address: '梅湾街道湘永路体育中心湘永路280号', lat: 26.4245, lng: 111.6036, cuisine: ['手擀面', '面馆'], featuredDish: ['手擀面'] }),
+  restaurant(64, { id: 'tese-niuroufen', category: 'noodles', name: '特色牛肉粉', address: '原香都大酒店旁', lat: 26.4477, lng: 111.6157, cuisine: ['牛肉粉', '早餐'], featuredDish: ['牛肉粉'], hours: '06:00–14:00' }),
+  restaurant(65, { id: 'shitouhuo-lufen', category: 'noodles', name: '石头火卤粉', address: '富强小区3栋7-8号；梅湾街道三多亭471-473号楼', lat: 26.4538, lng: 111.6186, cuisine: ['卤粉', '早餐'], featuredDish: ['卤粉'], hours: '06:00–14:00' }),
+  restaurant(66, { id: 'erzhong-guangtoufen', category: 'noodles', name: '二中建设银行光头粉', address: '永州二中建设银行旁摊位', lat: 26.4429, lng: 111.6088, cuisine: ['米粉', '早餐'], featuredDish: ['光头粉'], hours: '06:00–13:30' }),
+  restaurant(67, { id: 'laotang-tangfen', category: 'noodles', name: '老唐小炒店汤粉', address: '仁湾镇长丰工业园长丰大道一汽大众4S店隔壁', lat: 26.4059, lng: 111.6031, cuisine: ['汤粉', '小炒'], featuredDish: ['汤粉'] }),
+  restaurant(68, { id: 'changde-niuroufen', category: 'noodles', name: '常德牛肉粉', address: '永州二中对面', lat: 26.4435, lng: 111.6119, cuisine: ['牛肉粉', '常德风味'], featuredDish: ['牛肉粉'], hours: '06:00–14:00' }),
+  restaurant(69, { id: 'xiaoshan-guilin-mifen', category: 'noodles', name: '晓善桂林米粉', address: '冷水滩城市绿岛对面', lat: 26.4522, lng: 111.6066, cuisine: ['桂林米粉', '早餐'], featuredDish: ['桂林米粉'], hours: '06:00–14:00' }),
+  restaurant(70, { id: 'ziyi-maci', category: 'snack', name: '子艺麻糍', address: '17点左右二中对面出摊；19点左右步步高夏埠村对面', lat: 26.4406, lng: 111.6099, cuisine: ['麻糍', '街头小吃'], featuredDish: ['麻糍'], hours: '17:00–22:00' }),
+  restaurant(71, { id: 'laoyeji-qingbuliang', category: 'snack', name: '老椰记清补凉', address: '愿景、中邦均有门店', lat: 26.4307, lng: 111.6161, cuisine: ['清补凉', '甜品'], featuredDish: ['清补凉'] }),
+  restaurant(72, { id: 'zhangji-yajia-paocai', category: 'snack', name: '张记伢家泡菜', address: '肖家园街道零陵中路823号', lat: 26.4367, lng: 111.6033, cuisine: ['泡菜', '小吃'], featuredDish: ['泡菜'] }),
+  restaurant(73, { id: 'erzhong-zhachuan', category: 'snack', name: '二中炸串', address: '永州二中对面小吃街第一家', lat: 26.442, lng: 111.6128, cuisine: ['炸串', '小吃'], featuredDish: ['炸串'], hours: '16:00–23:00' }),
+  restaurant(74, { id: 'fenghuangyuan-liangfen', category: 'snack', name: '凤凰园城标凉粉', address: '凤凰园城标菜市场老爷爷摊位', lat: 26.4671, lng: 111.5889, cuisine: ['凉粉', '街头小吃'], featuredDish: ['凉粉'] }),
+  restaurant(75, { id: 'yudashi-baozipu', category: 'snack', name: '屿大师包子铺', address: '冷水滩区（包子均为自制，图片未给精确门牌）', lat: 26.4321, lng: 111.6006, cuisine: ['包子', '早餐'], featuredDish: ['自制包子'], hours: '06:00–14:00' }),
+  restaurant(76, { id: 'tangshi-paocai', category: 'snack', name: '唐氏泡菜', address: '梅湾街道双洲路银丰广场3号门面', lat: 26.4284, lng: 111.6152, cuisine: ['泡菜', '小吃'], featuredDish: ['泡菜'] }),
+  restaurant(77, { id: 'yuanyuan-malatang', category: 'snack', name: '媛媛麻辣烫', address: '桥头市场对面往三医院巷子门面', lat: 26.4398, lng: 111.5981, cuisine: ['麻辣烫', '小吃'], featuredDish: ['麻辣烫'] }),
+  restaurant(78, { id: 'houzi-chaofan', category: 'other', name: '猴子炒饭', address: '零陵北路云恒至尊1号门面', lat: 26.4583, lng: 111.5949, cuisine: ['炒饭', '砂锅饭'], featuredDish: ['炒饭', '砂锅饭'] }),
+  restaurant(79, { id: 'jinqiu-xiaozao', category: 'other', name: '金秋小灶', address: '传芳路与西冲塘路交汇处', lat: 26.4338, lng: 111.6292, cuisine: ['湘菜', '家常菜'], featuredDish: ['家常小炒'], price: '¥¥' }),
+  restaurant(80, { id: 'lier-malatang', category: 'other', name: '李二麻辣烫', address: '城市绿岛、体育中心、创发城对面均有门店', lat: 26.4464, lng: 111.6209, cuisine: ['麻辣烫', '烤串'], featuredDish: ['可烫可烤'], price: '¥¥' }),
+  restaurant(81, { id: 'xiaobao-ganguo-gourou', category: 'other', name: '小宝干锅狗肉火锅', address: '零陵北路与万寿路交叉口西100米', lat: 26.466, lng: 111.5968, cuisine: ['干锅', '火锅'], featuredDish: ['干锅狗肉火锅'], price: '¥¥¥' }),
+  restaurant(82, { id: 'mama-chaihuozao', category: 'other', name: '妈妈柴火灶', address: '进贤一巷与进贤路交叉口北150米；河西书香名邸', lat: 26.4258, lng: 111.624, cuisine: ['柴火菜', '湘菜'], featuredDish: ['柴火菜'], price: '¥¥' }),
+  restaurant(83, { id: 'benfugui-xiafancai', category: 'other', name: '笨富贵下饭菜', address: '富园一区32栋6号门面', lat: 26.4549, lng: 111.6228, cuisine: ['下饭菜', '湘菜'], featuredDish: ['下饭菜'], price: '¥¥' }),
+  restaurant(84, { id: 'panglajiao-cai', category: 'other', name: '胖辣椒居民楼菜馆', address: '愿景香港道101号门面；富园二区4栋1-2号门面', lat: 26.4299, lng: 111.628, cuisine: ['居民楼菜馆', '湘菜'], featuredDish: ['家常湘菜'], price: '¥¥' }),
+  restaurant(85, { id: 'xiaoxiao-shifu', category: 'other', name: '小小食府', address: '湘永路208号（河东体育馆斜对面）', lat: 26.4232, lng: 111.6004, cuisine: ['湘菜', '家常菜'], featuredDish: ['家常小炒'], price: '¥¥' }),
+  restaurant(86, { id: 'aizi-hongshufen', category: 'other', name: '矮子红薯粉血鸭', address: '兴旺路43号', lat: 26.4613, lng: 111.5927, cuisine: ['永州菜', '血鸭'], featuredDish: ['红薯粉血鸭'], price: '¥¥' }),
+  restaurant(87, { id: 'tangtaigong-kaoyu', category: 'other', name: '唐太公烤鱼', address: '凤凰园汽车站十字路口', lat: 26.4682, lng: 111.6025, cuisine: ['烤鱼', '中餐'], featuredDish: ['烤鱼'], price: '¥¥' }),
+  restaurant(88, { id: 'jizhoudao-kaorou', category: 'other', name: '济州岛烤肉', address: '中央新城B区127号济州岛韩国料理', lat: 26.4489, lng: 111.6173, cuisine: ['韩国料理', '烤肉'], featuredDish: ['韩式烤肉'], price: '¥¥¥' }),
+  restaurant(89, { id: 'shangwu-jiudian-hefan', category: 'other', name: '商务酒店门口盒饭店', address: '以前商务酒店门口（图片未给现门牌）', lat: 26.4391, lng: 111.622, cuisine: ['盒饭', '家常菜'], featuredDish: ['煎水豆腐', '煮鱼块'] }),
 ]
