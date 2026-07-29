@@ -37,5 +37,6 @@ export type ToastMessage = {
   id: number
   type: 'info' | 'error'
   message: string
+  exiting?: boolean
   action?: { label: string; onClick: () => void }
 }

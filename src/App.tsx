@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapPin, RotateCcw, Sparkles } from 'lucide-react'
 import { DetailDialog } from './components/DetailDialog'
 import { FoodMap } from './components/FoodMap'
-import { MobileResultsSheet } from './components/MobileResultsSheet'
-import { RestaurantList, ListSkeleton } from './components/RestaurantList'
-import { EmptyState, ErrorState } from './components/ResultsStates'
+import { MobileShopView } from './components/MobileShopView'
+import { MobileViewSwitcher, type MobileView } from './components/MobileViewSwitcher'
+import { RestaurantList } from './components/RestaurantList'
+import { EmptyState } from './components/ResultsStates'
 import { SearchHeader } from './components/SearchHeader'
 import { ToastRegion } from './components/Toast'
 import { restaurants, YONGZHOU_CENTER } from './data/restaurants'
@@ -33,18 +34,23 @@ function updateUrl(query: string, filters: Filters, mode: 'push' | 'replace') {
   window.history[mode === 'push' ? 'pushState' : 'replaceState']({}, '', url)
 }
 
-function ResultsContent({ items, selectedId, loading, error, query, filters, onSelect, onDetails, onClear, onRetry }: {
-  items: RestaurantWithDistance[]; selectedId: string | null; loading: boolean; error: boolean; query: string; filters: Filters
-  onSelect: (id: string) => void; onDetails: (id: string) => void; onClear: () => void; onRetry: () => void
+function ResultsContent({ items, selectedId, query, filters, distanceContext, onSelect, onDetails, onClear }: {
+  items: RestaurantWithDistance[]; selectedId: string | null; query: string; filters: Filters
+  distanceContext?: string
+  onSelect: (id: string) => void; onDetails: (id: string) => void; onClear: () => void
 }) {
   const activeCount = getActiveFilterCount(filters)
   return <>
     <div className="results-heading">
-      <div><span className="results-context">{query ? `“${query}”的搜索结果` : '编辑精选 · 永州附近'}</span><h1>{loading ? '正在寻味…' : error ? '搜索遇到问题' : `${items.length} 家值得去的店`}</h1></div>
-      {!loading && !error && <div className="result-count" aria-live="polite"><strong>{items.length}</strong><span>处味道</span></div>}
-      {(query || activeCount > 0) && !loading && <button className="reset-inline" type="button" onClick={onClear} aria-label="清除搜索和筛选"><RotateCcw size={15} /></button>}
+      <div>
+        <span className="results-context">{query ? `“${query}”的搜索结果` : '编辑精选 · 永州附近'}</span>
+        <h1>{items.length} 家值得去的店</h1>
+        {distanceContext && <span className="results-sort-context">{distanceContext}</span>}
+      </div>
+      <div className="result-count" aria-live="polite"><strong>{items.length}</strong><span>处味道</span></div>
+      {(query || activeCount > 0) && <button className="reset-inline" type="button" onClick={onClear} aria-label="清除搜索和筛选"><RotateCcw size={15} /></button>}
     </div>
-    {loading ? <ListSkeleton /> : error ? <ErrorState onRetry={onRetry} /> : items.length === 0 ? <EmptyState summary={query || `${activeCount} 个筛选条件`} onClear={onClear} /> :
+    {items.length === 0 ? <EmptyState summary={query || `${activeCount} 个筛选条件`} onClear={onClear} /> :
       <RestaurantList restaurants={items} selectedId={selectedId} onSelect={onSelect} onDetails={onDetails} />}
   </>
 }
@@ -63,47 +69,58 @@ export default function App() {
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null)
   const [displayed, setDisplayed] = useState(() => calculate(initialQuery, initialFilters, YONGZHOU_CENTER))
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectionVersion, setSelectionVersion] = useState(0)
+  const [mobileView, setMobileView] = useState<MobileView>('map')
   const [detailId, setDetailId] = useState<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(false)
   const [locating, setLocating] = useState(false)
   const [tileError, setTileError] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const toastId = useRef(0)
-  const searchTimer = useRef<number | null>(null)
+  const toastMessages = useRef(new Map<number, string>())
+  const toastAutoTimers = useRef(new Map<number, number>())
+  const toastExitTimers = useRef(new Map<number, number>())
+  const offlineAnnounced = useRef(false)
 
-  const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
-    const id = ++toastId.current
-    setToasts((current) => [...current, { ...toast, id }])
-    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 6500)
+  const dismissToast = useCallback((id: number) => {
+    if (!toastMessages.current.has(id) || toastExitTimers.current.has(id)) return
+    const autoTimer = toastAutoTimers.current.get(id)
+    if (autoTimer) window.clearTimeout(autoTimer)
+    toastAutoTimers.current.delete(id)
+    setToasts((current) => current.map((item) => item.id === id ? { ...item, exiting: true } : item))
+    const exitTimer = window.setTimeout(() => {
+      toastMessages.current.delete(id)
+      toastExitTimers.current.delete(id)
+      setToasts((current) => current.filter((item) => item.id !== id))
+    }, 160)
+    toastExitTimers.current.set(id, exitTimer)
   }, [])
 
+  const addToast = useCallback((toast: Omit<ToastMessage, 'id' | 'exiting'>) => {
+    if ([...toastMessages.current.values()].includes(toast.message)) return
+    const id = ++toastId.current
+    toastMessages.current.set(id, toast.message)
+    setToasts((current) => [...current, { ...toast, id }])
+    const autoTimer = window.setTimeout(() => dismissToast(id), toast.type === 'info' ? 3200 : 5200)
+    toastAutoTimers.current.set(id, autoTimer)
+  }, [dismissToast])
+
   const runSearch = useCallback(() => {
-    if (searchTimer.current) window.clearTimeout(searchTimer.current)
-    setLoading(true); setError(false); setSelectedId(null)
     const nextQuery = input.trim()
-    searchTimer.current = window.setTimeout(() => {
-      setLoading(false)
-      setQuery(nextQuery)
-      if (nextQuery.includes('错误')) {
-        setError(true)
-        addToast({ type: 'error', message: '暂时没能完成搜索，请稍后重试。' })
-        return
-      }
-      setDisplayed(calculate(nextQuery, filters, origin))
-      updateUrl(nextQuery, filters, 'push')
-    }, 650)
-  }, [addToast, calculate, filters, input, origin])
+    setQuery(nextQuery)
+    setSelectedId(null)
+    setDisplayed(calculate(nextQuery, filters, origin))
+    updateUrl(nextQuery, filters, 'push')
+  }, [calculate, filters, input, origin])
 
   const changeFilters = useCallback((next: Filters) => {
-    setFilters(next); setError(false); setSelectedId(null)
+    setFilters(next); setSelectedId(null)
     setDisplayed(calculate(query, next, origin))
     updateUrl(query, next, 'replace')
   }, [calculate, origin, query])
 
   const clearConditions = useCallback(() => {
-    setInput(''); setQuery(''); setFilters(DEFAULT_FILTERS); setError(false); setSelectedId(null)
+    setInput(''); setQuery(''); setFilters(DEFAULT_FILTERS); setSelectedId(null)
     setDisplayed(calculate('', DEFAULT_FILTERS, origin)); updateUrl('', DEFAULT_FILTERS, 'replace')
   }, [calculate, origin])
 
@@ -130,6 +147,14 @@ export default function App() {
   }, [addToast, applyLocation])
 
   const showDetails = (id: string) => { setDetailId(id); setDetailOpen(true) }
+  const selectRestaurant = useCallback((id: string) => {
+    setSelectedId(id)
+    setSelectionVersion((current) => current + 1)
+  }, [])
+  const selectMobileRestaurant = useCallback((id: string) => {
+    selectRestaurant(id)
+    setMobileView('map')
+  }, [selectRestaurant])
   const detailRestaurant = displayed.find((item) => item.id === detailId) ?? enrichRestaurants(restaurants, origin).find((item) => item.id === detailId) ?? null
 
   useEffect(() => {
@@ -137,7 +162,7 @@ export default function App() {
       const params = new URLSearchParams(window.location.search)
       const restoredQuery = params.get('q') ?? ''
       const restoredFilters = filtersFromUrl(params)
-      setInput(restoredQuery); setQuery(restoredQuery); setFilters(restoredFilters); setError(false); setSelectedId(null)
+      setInput(restoredQuery); setQuery(restoredQuery); setFilters(restoredFilters); setSelectedId(null)
       setDisplayed(calculate(restoredQuery, restoredFilters, origin))
     }
     window.addEventListener('popstate', popState)
@@ -145,33 +170,55 @@ export default function App() {
   }, [calculate, origin])
 
   useEffect(() => {
-    const offline = () => addToast({ type: 'error', message: '网络已断开，地图底图可能暂时不可用。' })
-    const online = () => addToast({ type: 'info', message: '网络已恢复，可以继续搜索。' })
+    const offline = () => {
+      if (offlineAnnounced.current) return
+      offlineAnnounced.current = true
+      addToast({ type: 'error', message: '网络已断开，地图底图可能暂时不可用。' })
+    }
+    const online = () => {
+      if (!offlineAnnounced.current) return
+      offlineAnnounced.current = false
+      setTileError(false)
+      addToast({ type: 'info', message: '网络已恢复，可以继续搜索。' })
+    }
     window.addEventListener('offline', offline); window.addEventListener('online', online)
     return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online) }
   }, [addToast])
 
-  useEffect(() => () => { if (searchTimer.current) window.clearTimeout(searchTimer.current) }, [])
+  useEffect(() => () => {
+    toastAutoTimers.current.forEach((timer) => window.clearTimeout(timer))
+    toastExitTimers.current.forEach((timer) => window.clearTimeout(timer))
+  }, [])
 
-  const resultProps = { items: displayed, selectedId, loading, error, query, filters, onSelect: setSelectedId, onDetails: showDetails, onClear: clearConditions, onRetry: runSearch }
+  const resultProps = { items: displayed, selectedId, query, filters, onSelect: selectRestaurant, onDetails: showDetails, onClear: clearConditions }
+  const mobileResultProps = {
+    ...resultProps,
+    onSelect: selectMobileRestaurant,
+    distanceContext: `${userLocation ? '离你最近' : '永州中心'} · 按距离排序`,
+  }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-mobile-view={mobileView}>
       <a className="skip-link" href="#results-start">跳到搜索结果</a>
-      <SearchHeader value={input} onChange={setInput} onSubmit={runSearch} onLocate={locate} locating={locating} loading={loading}
+      <SearchHeader value={input} onChange={setInput} onSubmit={runSearch} onLocate={locate} locating={locating}
         filters={filters} onFiltersChange={changeFilters} onFiltersReset={() => changeFilters(DEFAULT_FILTERS)} />
       <main className="main-layout" id="results-start" tabIndex={-1}>
-        <aside className="desktop-results" aria-busy={loading}><ResultsContent {...resultProps} /></aside>
-        <section className="map-stage" aria-label="餐厅地图">
-          <FoodMap restaurants={displayed} selectedId={selectedId} onSelect={setSelectedId} onDetails={showDetails} userLocation={userLocation} loading={loading}
+        <aside className="desktop-results"><ResultsContent {...resultProps} /></aside>
+        <section className="map-stage" id="mobile-map-panel" role="tabpanel" aria-label="餐厅地图" aria-labelledby="mobile-map-tab">
+          <FoodMap restaurants={displayed} selectedId={selectedId} selectionVersion={selectionVersion} onSelect={selectRestaurant} onDetails={showDetails} userLocation={userLocation}
+            mapActive={mobileView === 'map'}
+            fitAllResults={Boolean(query || getActiveFilterCount(filters))}
             onTileError={() => { if (!tileError) { setTileError(true); addToast({ type: 'error', message: '地图底图加载失败，餐厅列表仍可正常使用。' }) } }} />
           <div className="map-context"><Sparkles size={15} /><span>{userLocation ? '已按你的位置排序' : '探索永州街巷好味'}</span></div>
           {tileError && <div className="map-error"><MapPin size={16} />底图暂不可用，标记与列表仍可操作</div>}
         </section>
       </main>
-      <MobileResultsSheet><ResultsContent {...resultProps} /></MobileResultsSheet>
+      <MobileShopView hidden={mobileView !== 'shops'}>
+        <ResultsContent {...mobileResultProps} />
+      </MobileShopView>
+      <MobileViewSwitcher view={mobileView} resultCount={displayed.length} onViewChange={setMobileView} />
       <DetailDialog restaurant={detailRestaurant} open={detailOpen} onOpenChange={setDetailOpen} />
-      <ToastRegion toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
+      <ToastRegion toasts={toasts} onDismiss={dismissToast} />
     </div>
   )
 }

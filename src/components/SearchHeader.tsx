@@ -9,13 +9,12 @@ type Props = {
   onSubmit: () => void
   onLocate: () => void
   locating: boolean
-  loading: boolean
   filters: Filters
   onFiltersChange: (filters: Filters) => void
   onFiltersReset: () => void
 }
 
-export function SearchHeader({ value, onChange, onSubmit, onLocate, locating, loading, filters, onFiltersChange, onFiltersReset }: Props) {
+export function SearchHeader({ value, onChange, onSubmit, onLocate, locating, filters, onFiltersChange, onFiltersReset }: Props) {
   const submit = (event: FormEvent) => { event.preventDefault(); onSubmit() }
   return (
     <header className="search-header">
@@ -30,9 +29,9 @@ export function SearchHeader({ value, onChange, onSubmit, onLocate, locating, lo
           onKeyDown={(event) => { if (event.key === 'Escape') { onChange(''); event.currentTarget.blur() } }}
           placeholder="搜索餐厅、菜系或菜品" autoComplete="off" />
         {value && <button className="clear-search" type="button" onClick={() => onChange('')} aria-label="清空搜索"><X size={18} /></button>}
-        <button className="search-submit" type="submit" disabled={loading}>
-          {loading ? <span className="spinner" aria-hidden="true" /> : <Search size={18} aria-hidden="true" />}
-          <span>{loading ? '搜索中' : '搜索'}</span>
+        <button className="search-submit" type="submit">
+          <Search size={18} aria-hidden="true" />
+          <span>搜索</span>
         </button>
       </form>
       <button className="location-button" type="button" onClick={onLocate} disabled={locating}>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronRight, MapPin, Star } from 'lucide-react'
 import type { RestaurantWithDistance } from '../types'
 import { formatDistance, statusText } from '../utils'
-import { NavigationChooser } from './NavigationChooser'
+import { AMapSearchLink } from './AMapSearchLink'
 
 type ItemProps = {
   restaurant: RestaurantWithDistance
@@ -32,7 +32,7 @@ export function RestaurantListItem({ restaurant, selected, onSelect, onDetails }
       </button>
       <div className="item-actions">
         <button type="button" onClick={(event) => { event.stopPropagation(); onDetails() }}>查看详情</button>
-        <NavigationChooser restaurant={restaurant} className="navigation-trigger" iconSize={14} />
+        <AMapSearchLink restaurant={restaurant} className="navigation-trigger" iconSize={14} />
       </div>
     </article>
   )
@@ -49,7 +49,8 @@ export function RestaurantList({ restaurants, selectedId, onSelect, onDetails }:
   const listRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!selectedId || !listRef.current) return
-    listRef.current.querySelector(`[data-restaurant-id="${selectedId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    listRef.current.querySelector(`[data-restaurant-id="${selectedId}"]`)?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' })
   }, [selectedId])
 
   return (
@@ -60,10 +61,4 @@ export function RestaurantList({ restaurants, selectedId, onSelect, onDetails }:
       ))}
     </div>
   )
-}
-
-export function ListSkeleton() {
-  return <div className="skeleton-list" aria-label="正在加载餐厅" role="status">
-    {[0, 1, 2, 3].map((item) => <div className="skeleton-item" key={item}><span className="skeleton skeleton--image" /><span className="skeleton-lines"><i /><i /><i /><i /></span></div>)}
-  </div>
 }
